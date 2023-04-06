@@ -1,3 +1,5 @@
+Description from Professor Tacla's github:
+
 # VictimSim
 A simulator for testing search algorithms in rescue scenarios.
 The simulator is for the course on Artificial Intelligence at UTFPR, Curitiba.

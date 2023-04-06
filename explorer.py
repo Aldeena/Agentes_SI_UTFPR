@@ -33,14 +33,14 @@ class Explorer(AbstractAgent):
         # Specific initialization for the rescuer
         self.resc = resc           # reference to the rescuer agent
         self.rtime = self.TLIM     # remaining time to explore
+        self.x = 0
+        self.y = 0
 
     """def dfs_Online(self):
 
         #Movement variables
         dx = 0
         dy = 0
-        posX = self.x
-        posY = self.y
         movement
         newMovement
        
@@ -58,7 +58,7 @@ class Explorer(AbstractAgent):
                     movement = self.directions[self.actions] #Priority based direction
                     dx = movement[0]
                     dy = movement[1]
-                    self.result[(posX+dx,posY+dy)] = self.body.walk(dx,dy)
+                    self.result[(self.x+dx,self.y+dy)] = self.body.walk(dx,dy)
                     self.unbacktracked[(self.x,self.y)] = self.antAction
             if self.untried[(self.x,self.y)] is None:
                 if self.unbacktracked[(self.x,self.y)] is None:
@@ -70,8 +70,8 @@ class Explorer(AbstractAgent):
                 newMovement = self.unbacktracked[(self.x, self.y)]
                 self.action = newMovement.pop(0)
             #self.antState = newState
-            self.x = posX
-            self.y = posY
+            self.x = self.x
+            self.y = self.y
         
         return"""
     
@@ -90,44 +90,40 @@ class Explorer(AbstractAgent):
         # Movement variables
         dx = 0
         dy = 0
-        posX = 0
-        posY = 0
         movimento = 0
-        #posXFuturo = 0
-        #posYFuturo = 0
 
         # First iteration is out of the loop
-        self.untried[(posX, posY)] = self.actions.copy()
+        self.untried[(self.x, self.y)] = self.actions.copy()
 
-        while (self.untried != None or self.unbacktracked != None):
-            if (posX, posY) not in self.untried:
-                self.untried[(posX, posY)] = self.actions.copy()
-            if self.action is not None:
-                # If the position was already tested then there is nothing to be done, so we'll just pass by
-                if (posX, posY) in self.result:
-                    pass
-                else:
-                    # Priority based direction
-                    movement = self.directions[self.action]
-                    dx = movement[0]
-                    dy = movement[1]
-                    movimento = self.body.walk(dx, dy)
-                    self.result[(posX+dx,posY+dy)] = movimento
-                    self.unbacktracked[(posX,posY)] = self.action
-            if self.untried[(posX, posY)] is None:
-                if self.unbacktracked[(posX, posY)] is None:
-                    return
-                else:
-                    self.action = self.unbacktracked[(posX, posY)].pop(0)
+
+        if (self.x, self.y) not in self.untried:
+            self.untried[(self.x, self.y)] = self.actions.copy()
+        if self.action is not None:
+            # If the position was already tested then there is nothing to be done, so we'll just pass by
+            if (self.x, self.y) in self.result:
+                pass
             else:
-                if len(self.untried[(posX, posY)]) > 0:
-                    self.action = self.untried[(posX, posY)].pop(0)
-            # self.antState = newState
-            if movimento == PhysAgent.EXECUTED:
-                posX = posX + dx
-                posY = posY + dy
+                # Priority based direction
+                movement = self.directions[self.action]
+                dx = movement[0]
+                dy = movement[1]
+                movimento = self.body.walk(dx,dy)
+                self.result[(self.x+dx,self.y+dy)] = movimento
+                self.unbacktracked[(self.x,self.y)] = self.action
+        if self.untried[(self.x, self.y)] is None:
+            if self.unbacktracked[(self.x, self.y)] is None:
+                return
             else:
-                walls = 1
+                self.action = self.unbacktracked[(self.x, self.y)].pop(0)
+        else:
+            if len(self.untried[(self.x, self.y)]) > 0:
+                self.action = self.untried[(self.x, self.y)].pop(0)
+        # self.antState = newState
+        if movimento == PhysAgent.EXECUTED:
+            self.x = self.x + dx
+            self.y = self.y + dy
+        else:
+            walls = 1
         
         #self.dfs_Online(self)
         

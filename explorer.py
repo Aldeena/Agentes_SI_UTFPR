@@ -92,10 +92,6 @@ class Explorer(AbstractAgent):
         dy = 0
         movimento = 0
 
-        # First iteration is out of the loop
-        self.untried[(self.x, self.y)] = self.actions.copy()
-
-
         if (self.x, self.y) not in self.untried:
             self.untried[(self.x, self.y)] = self.actions.copy()
         if self.action is not None:

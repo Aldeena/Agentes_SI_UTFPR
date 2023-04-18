@@ -19,7 +19,6 @@ class PhysAgent:
     BUMPED = -1        # agent bumped into a wall or reached the end of the grid
     TIME_EXCEEDED = -2 # agent reached the time limit - no more battery
     EXECUTED = 1       # action successfully executed
-    #FREEZED = 0        # agent didn't moved
     
 
     def __init__(self, mind, env, x_base, y_base, state=ACTIVE):

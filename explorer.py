@@ -21,10 +21,10 @@ class Explorer(AbstractAgent):
     action = None
     #inverter valor das tuplas na vertical, pois o grid sobe quando y é negativo
     directions = {'U':(0,-1), 'UR':(1,-1), 'R':(1,0), 'DR':(1,1), 'D':(0,1), 'DL':(-1, 1), 'L':(-1,0), 'UL':(-1, -1)}
-    #actions = ['U', 'UR', 'R', 'DR', 'D', 'DL', 'L', 'UL']
+    actions = ['U', 'UR', 'R', 'DR', 'D', 'DL', 'L', 'UL']
     #actions = ['U', 'R', 'D', 'L']
     #actions = ['UR', 'DR', 'DL', 'UL']
-    actions = ['U', 'R', 'D', 'L', 'UR', 'DR', 'UL', 'DL']
+    #actions = ['U', 'R', 'D', 'L', 'UR', 'DR', 'UL', 'DL']
 
     def __init__(self, env, config_file, resc):
         """ Construtor do agente random on-line
@@ -44,44 +44,75 @@ class Explorer(AbstractAgent):
         self.last_y = 0
         #self.passos = 0
 
-    """def dfs_Online(self):
+    def dfs_Online(self):
 
-        #Movement variables
+        # Movement variables
         dx = 0
         dy = 0
-        movement
-        newMovement
-       
-        self.untried [(self.x,self.y)] = self.actions #First iteration is out of the loop
+        movimento = -1
 
-       # if goal-test(s') then return stop
-
-        while(self.untried != None or self.unbacktracked != None):
-            if (self.x,self.y) not in self.untried:
-                self.untried[(self.x,self.y)] = self.actions
-            if self.antAction is not None:
-                if (self.x,self.y) in self.result: #If the position was already tested then there is nothing to be done, so we'll just pass by
-                    pass
+        if (self.x, self.y) not in self.untried:
+            self.untried[(self.x, self.y)] = self.actions.copy()
+        if self.action is not None:
+            #if len(self.untried[(self.x, self.y)]) > 0: #pegar sempre a primeira direcao possivel
+             #   self.action = self.untried[(self.x, self.y)].pop(0)
+            movement = self.directions[self.action]
+            dx = movement[0]
+            dy = movement[1]
+            # If the position was already tested then there is nothing to be done, so we'll just pass by
+            if (self.x+dx, self.y+dy) not in self.result:
+                # Priority based direction
+                movimento = self.body.walk(dx,dy)
+                if dx != 0 and dy != 0:
+                    self.rtime -= self.COST_DIAG
                 else:
-                    movement = self.directions[self.actions] #Priority based direction
-                    dx = movement[0]
-                    dy = movement[1]
-                    self.result[(self.x+dx,self.y+dy)] = self.body.walk(dx,dy)
-                    self.unbacktracked[(self.x,self.y)] = self.antAction
-            if self.untried[(self.x,self.y)] is None:
-                if self.unbacktracked[(self.x,self.y)] is None:
-                    return
-                else:
-                    newMovement = self.unbacktracked[(self.x,self.y)]
-                    self.action = newMovement.pop(0)
+                    self.rtime -= self.COST_LINE
+                #print(self.rtime)
+                #self.passos += 1
+                self.result[(self.x+dx,self.y+dy)] = movimento
+                self.unbacktracked[(self.x,self.y)] = (self.last_x,self.last_y)
+        if self.untried[(self.x,self.y)] == []:
+            if self.unbacktracked is None or (all(self.untried) == {}):
+                return
             else:
-                newMovement = self.unbacktracked[(self.x, self.y)]
-                self.action = newMovement.pop(0)
-            #self.antState = newState
-            self.x = self.x
-            self.y = self.y
-        
-        return"""
+                last_dx = self.last_x - self.x
+                last_dy = self.last_y - self.y
+                self.body.walk(last_dx,last_dy)
+                if dx != 0 and dy != 0:
+                    self.rtime -= self.COST_DIAG
+                else:
+                    self.rtime -= self.COST_LINE
+                #print(self.rtime)
+                #self.passos += 1
+                self.x = self.last_x
+                self.y = self.last_y
+                if (self.x == 0 and self.y == 0) and ((0,0) not in self.unbacktracked):
+                    #print(self.passos)
+                    self.resc.go_save_victims([], [])
+                    return
+                lastMov = self.unbacktracked.pop((self.x, self.y))
+                self.last_x = lastMov[0]
+                self.last_y = lastMov[1]
+                #self.x = self.x + dx
+                #self.y = self.y + dy
+        else:
+            if len(self.untried[(self.x, self.y)]) > 0:
+                self.action = self.untried[(self.x, self.y)].pop(0)
+        if movimento == PhysAgent.EXECUTED:
+            self.last_x = self.x
+            self.last_y = self.y
+            self.x = self.x + dx
+            self.y = self.y + dy
+            seq = self.body.check_for_victim()
+            if seq >= 0:
+                vs = self.body.read_vital_signals(seq)
+                self.rtime -= self.COST_READ
+                print("exp: read vital signals of " + str(seq))
+                print(vs)
+        else:
+            walls = 1
+
+        return
     
     def deliberate(self) -> bool:
         """ The agent chooses the next action. The simulator calls this
@@ -95,7 +126,7 @@ class Explorer(AbstractAgent):
             self.resc.go_save_victims([],[])
             return False
         
-        # Movement variables
+        """# Movement variables
         dx = 0
         dy = 0
         movimento = -1
@@ -161,10 +192,10 @@ class Explorer(AbstractAgent):
                 print("exp: read vital signals of " + str(seq))
                 print(vs)
         else:
-            walls = 1
+            walls = 1"""
 
         
-        #self.dfs_Online(self)
+        self.dfs_Online()
         
         """dx = random.choice([-1, 0, 1])
 

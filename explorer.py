@@ -5,6 +5,7 @@
 import sys
 import os
 import random
+import time
 from abstract_agent import AbstractAgent
 from physical_agent import PhysAgent
 from abc import ABC, abstractmethod
@@ -17,14 +18,10 @@ class Explorer(AbstractAgent):
     unbacktracked = {}
     walls = {}
     victims = {}
-    #antAction = None
     action = None
-    #inverter valor das tuplas na vertical, pois o grid sobe quando y é negativo
     directions = {'U':(0,-1), 'UR':(1,-1), 'R':(1,0), 'DR':(1,1), 'D':(0,1), 'DL':(-1, 1), 'L':(-1,0), 'UL':(-1, -1)}
-    actions = ['U', 'UR', 'R', 'DR', 'D', 'DL', 'L', 'UL']
-    #actions = ['U', 'R', 'D', 'L']
-    #actions = ['UR', 'DR', 'DL', 'UL']
-    #actions = ['U', 'R', 'D', 'L', 'UR', 'DR', 'UL', 'DL']
+    #actions = ['U', 'UR', 'R', 'DR', 'D', 'DL', 'L', 'UL'] #Clockwork movement pattern
+    actions = ['U', 'R', 'D', 'L', 'UR', 'DR', 'UL', 'DL'] #New movement pattern, more efficient
 
     def __init__(self, env, config_file, resc):
         """ Construtor do agente random on-line
@@ -42,6 +39,9 @@ class Explorer(AbstractAgent):
         self.y = 0
         self.last_x = 0
         self.last_y = 0
+        self.manhattanDist = 0
+        self.retornando = 0
+        self.terminou = 0
         #self.passos = 0
 
     def dfs_Online(self):
@@ -50,12 +50,13 @@ class Explorer(AbstractAgent):
         dx = 0
         dy = 0
         movimento = -1
+        voltou = 0
 
         if (self.x, self.y) not in self.untried:
             self.untried[(self.x, self.y)] = self.actions.copy()
         if self.action is not None:
-            #if len(self.untried[(self.x, self.y)]) > 0: #pegar sempre a primeira direcao possivel
-             #   self.action = self.untried[(self.x, self.y)].pop(0)
+            #if len(self.untried[(self.x, self.y)]) > 0:
+            #    self.action = self.untried[(self.x, self.y)].pop(0)
             movement = self.directions[self.action]
             dx = movement[0]
             dy = movement[1]
@@ -67,14 +68,18 @@ class Explorer(AbstractAgent):
                     self.rtime -= self.COST_DIAG
                 else:
                     self.rtime -= self.COST_LINE
-                #print(self.rtime)
+                print(self.rtime)
                 #self.passos += 1
                 self.result[(self.x+dx,self.y+dy)] = movimento
                 self.unbacktracked[(self.x,self.y)] = (self.last_x,self.last_y)
         if self.untried[(self.x,self.y)] == []:
-            if self.unbacktracked is None or (all(self.untried) == {}):
+            if self.unbacktracked == {}:
+                self.resc.go_save_victims([], [])
+                self.terminou = 1
                 return
             else:
+                voltou = 1
+                #print("last_x: ", self.last_x, " last_y: ", self.last_y)
                 last_dx = self.last_x - self.x
                 last_dy = self.last_y - self.y
                 self.body.walk(last_dx,last_dy)
@@ -82,23 +87,29 @@ class Explorer(AbstractAgent):
                     self.rtime -= self.COST_DIAG
                 else:
                     self.rtime -= self.COST_LINE
-                #print(self.rtime)
+                print(self.rtime)
                 #self.passos += 1
                 self.x = self.last_x
                 self.y = self.last_y
-                if (self.x == 0 and self.y == 0) and ((0,0) not in self.unbacktracked):
+                #time.sleep(0.5)
+                #if (self.x == 0 and self.y == 0) and ((0,0) not in self.unbacktracked):
                     #print(self.passos)
-                    self.resc.go_save_victims([], [])
-                    return
-                lastMov = self.unbacktracked.pop((self.x, self.y))
-                self.last_x = lastMov[0]
-                self.last_y = lastMov[1]
+                    #self.resc.go_save_victims([], [])
+                    #self.terminou = 1
+                    #return
+                lastMov = self.unbacktracked.popitem()
+                #print("lastMov: ", lastMov)
+                #print("last_x: ", self.last_x, " last_y: ", self.last_y)
+                self.last_x = lastMov[1][0]
+                self.last_y = lastMov[1][1]
                 #self.x = self.x + dx
                 #self.y = self.y + dy
         else:
-            if len(self.untried[(self.x, self.y)]) > 0:
+            if len(self.untried[(self.x, self.y)]) > 0 and movimento == PhysAgent.BUMPED:
                 self.action = self.untried[(self.x, self.y)].pop(0)
-        if movimento == PhysAgent.EXECUTED:
+            else:
+                self.action = None
+        if movimento == PhysAgent.EXECUTED and voltou != 1:
             self.last_x = self.x
             self.last_y = self.y
             self.x = self.x + dx
@@ -109,6 +120,7 @@ class Explorer(AbstractAgent):
                 self.rtime -= self.COST_READ
                 print("exp: read vital signals of " + str(seq))
                 print(vs)
+            #time.sleep(0.5)
         else:
             walls = 1
 
@@ -194,8 +206,10 @@ class Explorer(AbstractAgent):
         else:
             walls = 1"""
 
-        
-        self.dfs_Online()
+        if self.terminou == 0:
+            self.dfs_Online()
+        else:
+            return False
         
         """dx = random.choice([-1, 0, 1])
 

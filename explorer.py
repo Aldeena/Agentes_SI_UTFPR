@@ -16,6 +16,7 @@ class Explorer(AbstractAgent):
     result = {}
     untried = {}
     unbacktracked = {}
+    movimento = []
     walls = {}
     victims = {}
     action = None
@@ -59,174 +60,220 @@ class Explorer(AbstractAgent):
             em um canto do grid cercado por paredes
         """
         
-                
+               
 
         if self.x < 0: #Left
             if self.y < 0: #Up
+                movimentos = ['DR', 'R', 'D', 'DR', 'UR', 'DL', 'L', 'UL']
+
+                for i in movimentos:
+                    print("Direção: ", i)
+                    dx = self.directions[i][0]
+                    dy = self.directions[i][1]
+                    print("dx: ", dx, " dy: ", dy)
+                    passo = self.body.walk(self.x+dx, self.y+dy)
+                    if dx != 0 and dy != 0:
+                        self.rtime -= self.COST_DIAG
+                    else:
+                        self.rtime -= self.COST_LINE
+                    if passo == PhysAgent.EXECUTED:
+                        self.x = self.x + dx
+                        self.y = self.y + dy
+                        
+                        break
+
+                else:
+                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
+                    return False
+            
+            elif self.y > 0: #Down
                 movimentos = ['UR', 'R', 'U', 'DR', 'UL', 'D', 'L', 'DL']
 
                 for i in movimentos:
+                    print("Direção: ", i)
                     dx = self.directions[i][0]
                     dy = self.directions[i][1]
+                    print("dx: ", dx, " dy: ", dy)
                     passo = self.body.walk(self.x+dx, self.y+dy)
+                    if dx != 0 and dy != 0:
+                        self.rtime -= self.COST_DIAG
+                    else:
+                        self.rtime -= self.COST_LINE
                     if passo == PhysAgent.EXECUTED:
                         self.x = self.x + dx
                         self.y = self.y + dy
-                        if dx != 0 and dy != 0:
-                            self.rtime -= self.COST_DIAG
-                        else:
-                            self.rtime -= self.COST_LINE
                         
-                        return
+                        break
                 
-                print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                return
-            
-            elif self.y > 0: #Down
-                movimentos = ['DR', 'R', 'D', 'UR', 'DL', 'U', 'L', 'UL']
-
-                for i in movimentos:
-                    dx = self.directions[i][0]
-                    dy = self.directions[i][1]
-                    passo = self.body.walk(self.x+dx, self.y+dy)
-                    if passo == PhysAgent.EXECUTED:
-                        self.x = self.x + dx
-                        self.y = self.y + dy
-                        if dx != 0 and dy != 0:
-                            self.rtime -= self.COST_DIAG
-                        else:
-                            self.rtime -= self.COST_LINE
-                        
-                        return
-                
-                print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                return
+                else:
+                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
+                    return False
             
             else: #y=0
                 movimentos = ['R', 'UR', 'DR', 'U', 'D', 'DL', 'UL', 'L']
 
                 for i in movimentos:
+                    print("Direção: ", i)
                     dx = self.directions[i][0]
                     dy = self.directions[i][1]
+                    print("dx: ", dx, " dy: ", dy)
                     passo = self.body.walk(self.x+dx, self.y+dy)
+                    if dx != 0 and dy != 0:
+                        self.rtime -= self.COST_DIAG
+                    else:
+                        self.rtime -= self.COST_LINE
                     if passo == PhysAgent.EXECUTED:
                         self.x = self.x + dx
                         self.y = self.y + dy
-                        if dx != 0 and dy != 0:
-                            self.rtime -= self.COST_DIAG
-                        else:
-                            self.rtime -= self.COST_LINE
                         
-                        return
+                        break
                 
-                print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                return
+                else:
+                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
+                    return False
             
         elif self.x > 0: #Right
             if self.y < 0: #Up
                 movimentos = ['DL', 'L', 'D', 'UL', 'DR', 'U', 'R', 'UR']
 
                 for i in movimentos:
+                    print("Direção: ", i)
                     dx = self.directions[i][0]
                     dy = self.directions[i][1]
+                    print("dx: ", dx, " dy: ", dy)
                     passo = self.body.walk(self.x+dx, self.y+dy)
+                    if dx != 0 and dy != 0:
+                        self.rtime -= self.COST_DIAG
+                    else:
+                        self.rtime -= self.COST_LINE
                     if passo == PhysAgent.EXECUTED:
                         self.x = self.x + dx
                         self.y = self.y + dy
-                        if dx != 0 and dy != 0:
-                            self.rtime -= self.COST_DIAG
-                        else:
-                            self.rtime -= self.COST_LINE
                         
-                        return
+                        break
                 
-                print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                return
+                else:
+                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
+                    return False
             
             elif self.y > 0: #Down
                 movimentos = ['UL', 'L', 'U', 'DL', 'UR', 'D', 'R', 'DR']
 
                 for i in movimentos:
+                    print("Direção: ", i)
                     dx = self.directions[i][0]
                     dy = self.directions[i][1]
+                    print("dx: ", dx, " dy: ", dy)
                     passo = self.body.walk(self.x+dx, self.y+dy)
+                    if dx != 0 and dy != 0:
+                        self.rtime -= self.COST_DIAG
+                    else:
+                        self.rtime -= self.COST_LINE
                     if passo == PhysAgent.EXECUTED:
                         self.x = self.x + dx
                         self.y = self.y + dy
-                        if dx != 0 and dy != 0:
-                            self.rtime -= self.COST_DIAG
-                        else:
-                            self.rtime -= self.COST_LINE
                         
-                        return
+                        break
                 
-                print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                return
+                else:
+                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
+                    return False
             
             else: #y=0
                 movimentos = ['L', 'UL', 'DL', 'U', 'D', 'DR', 'UR', 'R']
 
                 for i in movimentos:
+                    print("Direção: ", i)
                     dx = self.directions[i][0]
                     dy = self.directions[i][1]
+                    print("dx: ", dx, " dy: ", dy)
                     passo = self.body.walk(self.x+dx, self.y+dy)
+                    if dx != 0 and dy != 0:
+                        self.rtime -= self.COST_DIAG
+                    else:
+                        self.rtime -= self.COST_LINE
                     if passo == PhysAgent.EXECUTED:
                         self.x = self.x + dx
                         self.y = self.y + dy
-                        if dx != 0 and dy != 0:
-                            self.rtime -= self.COST_DIAG
-                        else:
-                            self.rtime -= self.COST_LINE
                         
-                        return
+                        break
                 
-                print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                return
+                else:
+                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
+                    return False
                 
         else: #x=0
             if self.y < 0: #Up
                 movimentos = ['D', 'DL', 'DR', 'L', 'R', 'UL', 'UR', 'U']
 
                 for i in movimentos:
-                    dy = self.directions[i][1]
+                    print("Direção: ", i)
                     dx = self.directions[i][0]
+                    dy = self.directions[i][1]
+                    print("dx: ", dx, " dy: ", dy)
                     passo = self.body.walk(self.x+dx, self.y+dy)
+                    if dx != 0 and dy != 0:
+                        self.rtime -= self.COST_DIAG
+                    else:
+                        self.rtime -= self.COST_LINE
                     if passo == PhysAgent.EXECUTED:
                         self.x = self.x + dx
                         self.y = self.y + dy
-                        if dx != 0 and dy != 0:
-                            self.rtime -= self.COST_DIAG
-                        else:
-                            self.rtime -= self.COST_LINE
                         
-                        return
+                        break
                 
-                print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                return
+                else:
+                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
+                    return False
             
             elif self.y > 0: #Down
                 movimentos = ['U', 'UL', 'UR', 'L', 'R', 'DL', 'DR', 'D']
 
                 for i in movimentos:
+                    print("Direção: ", i)
                     dx = self.directions[i][0]
                     dy = self.directions[i][1]
+                    print("dx: ", dx, " dy: ", dy)
                     passo = self.body.walk(self.x+dx, self.y+dy)
+                    if dx != 0 and dy != 0:
+                        self.rtime -= self.COST_DIAG
+                    else:
+                        self.rtime -= self.COST_LINE
                     if passo == PhysAgent.EXECUTED:
                         self.x = self.x + dx
                         self.y = self.y + dy
-                        if dx != 0 and dy != 0:
-                            self.rtime -= self.COST_DIAG
-                        else:
-                            self.rtime -= self.COST_LINE
                         
-                        return
+                        break
                 
-                print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                return
+                else:
+                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
+                    return False
             
             else: #y=0
                 print("Agent already base! Time to summon the rescuer")
-                return
+                return False
+
+        
+        return True
+
+        dx = random.choice([-1, 0, 1])
+
+        if dx == 0:
+           dy = random.choice([-1, 1])
+        else:
+           dy = random.choice([-1, 0, 1])
+        
+        # Moves the body to another position
+        result = self.body.walk(dx, dy)
+
+        # Update remaining time
+        if dx != 0 and dy != 0:
+            self.rtime -= self.COST_DIAG
+        else:
+            self.rtime -= self.COST_LINE
+
+        
+        
 
 
     def dfs_Online(self):
@@ -240,11 +287,12 @@ class Explorer(AbstractAgent):
         # Movement variables
         dx = 0
         dy = 0
-        movimento = -1
+        movimento = 0
         voltou = 0
 
         if (self.x, self.y) not in self.untried:
             self.untried[(self.x, self.y)] = self.actions.copy()
+
         if self.action is not None:
             movement = self.directions[self.action]
             dx = movement[0]
@@ -260,27 +308,33 @@ class Explorer(AbstractAgent):
                 #self.passos += 1
                 self.result[(self.x+dx,self.y+dy)] = movimento
                 self.unbacktracked[(self.x,self.y)] = (self.last_x,self.last_y)
+
         if self.untried[(self.x,self.y)] == []:
             if self.unbacktracked == {}:
-                self.resc.go_save_victims([], [])
+                self.resc.go_save_victims(self.walls, self.victims)
                 self.terminou = 1
                 return
+            
             else:
                 voltou = 1
                 #print("last_x: ", self.last_x, " last_y: ", self.last_y)
                 last_dx = self.last_x - self.x
                 last_dy = self.last_y - self.y
                 self.body.walk(last_dx,last_dy)
+
                 if dx != 0 and dy != 0:
                     self.rtime -= self.COST_DIAG
                 else:
                     self.rtime -= self.COST_LINE
+
                 #self.passos += 1
                 self.x = self.last_x
                 self.y = self.last_y
                 self.manhattanDist = abs(self.last_x) + abs(self.last_y)
+
                 if self.manhattanDist >= self.rtime:
                     self.retornando = 1
+
                 print("Manhattan Dist: ", self.manhattanDist)
                 print("Tempo: ", self.rtime)
                 print("Retornando: ", self.retornando)
@@ -294,8 +348,9 @@ class Explorer(AbstractAgent):
                 self.last_y = lastMov[1][1]
                 #self.x = self.x + dx
                 #self.y = self.y + dy
+
         else:
-            if len(self.untried[(self.x, self.y)]) > 0 and movimento == PhysAgent.BUMPED:
+            if len(self.untried[(self.x, self.y)]) > 0 and movimento != PhysAgent.EXECUTED:
                 self.action = self.untried[(self.x, self.y)].pop(0)
             else:
                 self.action = None
@@ -306,20 +361,25 @@ class Explorer(AbstractAgent):
             self.x = self.x + dx
             self.y = self.y + dy
             self.manhattanDist = abs(self.last_x) + abs(self.last_y)
+
             if self.manhattanDist >= self.rtime:
                     self.retornando = 1
+
             print("Manhattan Dist: ", self.manhattanDist)
             print("Tempo: ", self.rtime)
             print("Retornando: ", self.retornando)
             seq = self.body.check_for_victim()
+
             if seq >= 0:
                 vs = self.body.read_vital_signals(seq)
                 self.rtime -= self.COST_READ
+                self.victims[(self.x,self.y)] = vs
                 print("exp: read vital signals of " + str(seq))
                 print(vs)
             #time.sleep(0.1)
-        else:
-            walls = 1
+
+        elif movimento == PhysAgent.BUMPED:
+            self.walls[(self.x+dx,self.y+dy)] = 1
 
         return
     
@@ -327,26 +387,26 @@ class Explorer(AbstractAgent):
         """ The agent chooses the next action. The simulator calls this
         method at each cycle. Must be implemented in every agent"""
 
-        """# No more actions, time almost ended
+        # No more actions, time almost ended
         if self.rtime < 10.0: 
             # time to wake up the rescuer
             # pass the walls and the victims (here, they're empty)
             print(f"{self.NAME} I believe I've remaining time of {self.rtime:.1f}")
             self.resc.go_save_victims([],[])
-            return False"""
+            return False
         
-        if self.retornando == 1:    #Returned to base through function
-            if self.x != 0 or self.y != 0:
-                self.voltaBase()
-                time.sleep(0.2)
-            else:
-                return False
-        else:                       #Walked through the whole grid and returned to base through backtracking
-            if self.terminou == 0: 
-                self.dfs_Online()
-                time.sleep(0.2)
-            else:
-                return False
+        #if self.retornando == 1:    #Returned to base through function
+        #    if self.voltaBase() != False:
+        #        pass
+                #time.sleep(0.2)
+        #    else:
+        #        return False
+        #else:                       #Walked through the whole grid and returned to base through backtracking
+        if self.terminou == 0: 
+            self.dfs_Online()
+            #time.sleep(0.2)
+        else:
+           return False
         
         
         ##Professor's code##

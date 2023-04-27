@@ -70,7 +70,11 @@ class Explorer(AbstractAgent):
             return 1
 
     def heuristic(self, position, goal):
-        return abs(position[0] - goal[0]) + abs(position[1] - goal[1])
+        dx = abs(position[0] - goal[0])
+        dy = abs(position[1] - goal[1])
+        diagonal_moves = min(dx, dy)
+        linear_moves = max(dx, dy) - diagonal_moves
+        return linear_moves + diagonal_moves * 1.5
     
     def A_Star(self, start, goal, neighbors, distance, heuristic):
         #Inicializa o set de explorados, a fila de prioridade e o dicionario contendo o pai de cada posicao
@@ -144,6 +148,11 @@ class Explorer(AbstractAgent):
 
             # Walk - just one step per deliberation
             self.body.walk(dx, dy)
+            
+            if dx != 0 and dy != 0:
+                self.rtime -= self.COST_DIAG
+            else:
+                self.rtime -= self.COST_LINE
 
 
 
@@ -174,6 +183,11 @@ class Explorer(AbstractAgent):
                 movimento = self.body.walk(dx,dy)
                 self.result[(self.x+dx,self.y+dy)] = movimento
 
+                if dx != 0 and dy != 0:
+                    self.rtime -= self.COST_DIAG
+                else:
+                    self.rtime -= self.COST_LINE
+
         if self.untried[(self.x,self.y)] == []:
             if self.unbacktracked == {}:
                 self.terminou = 1
@@ -189,6 +203,11 @@ class Explorer(AbstractAgent):
                 self.body.walk(last_dx,last_dy)
                 self.x = self.last_x
                 self.y = self.last_y
+
+                if dx != 0 and dy != 0:
+                    self.rtime -= self.COST_DIAG
+                else:
+                    self.rtime -= self.COST_LINE
 
                 if self.heuristic((self.x,self.y), (0,0)) >= self.rtime - 10:
                     self.retornando = 1
@@ -218,7 +237,7 @@ class Explorer(AbstractAgent):
 
             if seq >= 0:
                 vs = self.body.read_vital_signals(seq)
-                #self.rtime -= self.COST_READ
+                self.rtime -= self.COST_READ
                 self.victims[(self.x,self.y)] = vs
                 # print("exp: read vital signals of " + str(seq))
                 # print(vs)
@@ -234,8 +253,8 @@ class Explorer(AbstractAgent):
             # time to wake up the rescuer
             # pass the walls and the victims (here, they're empty)
             print(f"{self.NAME} I believe I've remaining time of {self.rtime:.1f}")
-            self.resc.go_save_victims(self.result,self.victims)
-            return False
+            #self.resc.go_save_victims(self.result,self.victims)
+            #return False
         
         if self.retornando == 1:    #Returned to base through function
             # Takes the first action of the plan (walk action) and removes it from the plan

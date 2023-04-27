@@ -40,5 +40,5 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         data_folder_name = sys.argv[1]
     else:
-        data_folder_name = "TESTE 3"
+        data_folder_name = "TESTE 2"
     main(data_folder_name)

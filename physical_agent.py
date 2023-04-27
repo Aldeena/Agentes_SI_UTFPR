@@ -70,10 +70,10 @@ class PhysAgent:
         In every case, action's executing time is discounted from time limit"""
         
         ## consume time
-        #if dx != 0 and dy != 0:   # diagonal
-        #    self.rtime -= self.mind.COST_DIAG
-        #else:
-        #    self.rtime -= self.mind.COST_LINE
+        if dx != 0 and dy != 0:   # diagonal
+            self.rtime -= self.mind.COST_DIAG
+        else:
+            self.rtime -= self.mind.COST_LINE
 
 
         ## agent is dead

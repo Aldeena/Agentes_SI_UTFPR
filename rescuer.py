@@ -9,15 +9,17 @@ from physical_agent import PhysAgent
 from abc import ABC, abstractmethod
 from collections import deque
 from node import Node
+import heapq
+import time
+import math
 
 
 ## Classe que define o Agente Rescuer com um plano fixo
 class Rescuer(AbstractAgent):
-    walls = {}
     victims = {}
-    neighbors = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
+    mapa = {}
+    neighbors_list = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
     dictCluster = {}
-    posCluster = {}
     def __init__(self, env, config_file):
         """ 
         @param env: a reference to an instance of the environment class
@@ -37,43 +39,14 @@ class Rescuer(AbstractAgent):
 
         
     
-    def go_save_victims(self, walls, victims):
+    def go_save_victims(self, mapa, victims):
         """ The explorer sends the map containing the walls and
         victims' location. The rescuer becomes ACTIVE. From now,
         the deliberate method is called by the environment"""
         self.body.set_state(PhysAgent.ACTIVE)
 
-        self.walls = walls
+        self.mapa = mapa
         self.victims = victims
-
-        #Monta o mapa descoberto
-        self.min_dx = 0
-        self.min_dy = 0
-        self.max_dx = 0
-        self.max_dy = 0
-
-        #Organizar o que foi descoberto pelo explorador
-        for p in walls:
-            if p[0] < self.min_dx:
-                self.min_dx = p[0] + 1
-            elif p[0] > self.max_dx:
-                self.max_dx = p[0] - 1
-
-            if p[1] < self.min_dy:
-                self.min_dy = p[1] + 1
-            elif p[1] > self.max_dy:
-                self.max_dy = p[1] - 1
-
-        for p in victims.keys():
-            if p[0] < self.min_dx:
-                self.min_dx = p[0]
-            elif p[0] > self.max_dx:
-                self.max_dx = p[0]
-
-            if p[1] < self.min_dy:
-                self.min_dy = p[1]
-            elif p[1] > self.max_dy:
-                self.max_dy = p[1]
 
         self.calculaCluster()
 
@@ -102,7 +75,7 @@ class Rescuer(AbstractAgent):
 
         tile = (0,0)
         for victim in self.dictCluster.keys():
-            path = self.AStar(tile, victim)
+            path = self.A_Star(tile, victim, self.neighbors, self.distance, self.heuristic)
             
             tileAux = tile
             for i in path:
@@ -113,7 +86,17 @@ class Rescuer(AbstractAgent):
                 #    del self.dictCluster[tileAux]
             
             tile = victim
+        
 
+        #Construir caminho da última vítima até a base
+        path = self.A_Star(tile, (0,0), self.neighbors, self.distance, self.heuristic)
+
+        for i in path:
+            self.plan.append(i)
+
+            tileAux = (tileAux[0]+i[0], tileAux[1]+i[1])
+
+        #print (self.plan)
 
 
     def calculaCluster(self):
@@ -132,7 +115,7 @@ class Rescuer(AbstractAgent):
 
             x = victim[0]
             y = victim[1]
-            for neighbor in self.neighbors:
+            for neighbor in self.neighbors_list:
                 dx = neighbor[0]
                 dy = neighbor[1]
                 if (x+dx, y+dy) in self.victims:
@@ -155,110 +138,82 @@ class Rescuer(AbstractAgent):
         self.dictCluster = dict(dictClusterOrdenado)
 
         return
-    
-    def salvaCluster(self):
-
-            victim = self.dictCluster.keys()[0]
-            x = victim[0]
-            y = victim[1]
-
-            for neighbor in self.neighbors:
-                dx = neighbor[0]
-                dy = neighbor[1]
-                if (x+dx, y+dy) in self.victims:
-                    result = self.body.walk(dx, dy)
-                    if result == PhysAgent.EXECUTED:
-                        # check if there is a victim at the current position
-                        seq = self.body.check_for_victim()
-                        if seq >= 0:
-                            res = self.body.first_aid(seq) # True when rescued           
-                            if res == True:
-                                del self.victims[(x+dx, y+dy)]
-                                result = self.body.walk(x-dx,y-dy)
 
     
-    def distManhattan(self, source, goal):
-        return ((abs(source[0]) + (abs(goal[0]))) + (abs(source[1]) + (abs(goal[1]))))
+    def neighbors(self, position):
+        x, y = position
+        neighbors = [(x-1, y), (x+1, y), (x, y-1), (x, y+1), (x-1, y-1), (x+1, y+1), (x-1, y+1), (x+1, y-1)]
+        valid_neighbors = []
+        for neighbor in neighbors:
+            if neighbor in self.mapa and self.mapa[neighbor] == PhysAgent.EXECUTED:
+                valid_neighbors.append(neighbor)
 
-    def AStar(self, tile, victim):
-        
-        possibilidades = {}
-        visitados = {}
+        return valid_neighbors
+    
+    def distance(self, position, neighbor):
+        x1, y1 = position
+        x2, y2 = neighbor
+        dx, dy = abs(x1 - x2), abs(y1 - y2)
+        if dx == dy:
+            return 1.5
+        else:
+            return 1
 
-        possibilidades[tile] = {'G':0, 'H':self.distManhattan(tile, victim)}
-
-        while True:
-            road = None
-            F = 99999
-            for i in possibilidades.keys():
-                if (possibilidades[i]['G'] + possibilidades[i]['H']) < F:
-                    F = possibilidades[i]['G'] + possibilidades[i]['H']
-                    road = i
-
-            if not road:
-                break
-
-            visitados[road] = possibilidades[road]
-            del possibilidades[road]
-            if road == victim:
-                break
-
-            movimentos = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
-            for mov in movimentos:
-                nextMov = (road[0] + mov[0], road[1] + mov[1])
-                if nextMov in visitados.keys() or nextMov in self.walls or nextMov[0] < self.min_dx or nextMov[0] > self.max_dx or nextMov[1] < self.min_dy or nextMov[1] > self.max_dy:
-                    continue
-
-                if nextMov not in possibilidades.keys():
-                    possibilidades[nextMov] = {'G':visitados[road]['G']+1, 'H':self.distManhattan(nextMov,victim),'pai':road}
-                elif (visitados[road]['G']+1) < possibilidades[nextMov]['G']:
-                    possibilidades[nextMov]['G'] = visitados[road]['G']+1
-                    possibilidades[nextMov]['pai'] = road
-
-        #Criar o caminho a ser percorrido pelo agente
-        if not road:
-            return False
-        
-        atual = victim
-        path = []
-
-        while not atual == tile:
-            passo = (atual[0] - visitados[atual]['pai'][0], atual[1] - visitados[atual]['pai'][1])
-            path.append(passo)
-            atual = visitados[atual]['pai']
-        return list(reversed(path))
-
-    """def bfsplan(self, source, victims):
-        rows, cols = len(matrix), len(matrix[0])
-        visited = [[False] * cols for  in range(rows)]
-        parents = [[None] * cols for _ in range(rows)]
-        queue = deque([(source[0], source[1])])
-        visited[source[0]][source[1]] = True
-
-        for victim in victims:
-            visited[victim[0]][victim[1]] = True
+    def heuristic(self, position, goal):
+        dx = abs(position[0] - goal[0])
+        dy = abs(position[1] - goal[1])
+        diagonal_moves = min(dx, dy)
+        linear_moves = max(dx, dy) - diagonal_moves
+        return linear_moves + diagonal_moves * 1.5
+    
+    def A_Star(self, start, goal, neighbors, distance, heuristic):
+        #Inicializa o set de explorados, a fila de prioridade e o dicionario contendo o pai de cada posicao
+        explored = set()
+        queue = [(self.heuristic(start, goal), start)]
+        parent = {start: None}
 
         while queue:
-            x, y = queue.popleft()
+            #Recebe a posicao com o menor custo estimado
+            _, current = heapq.heappop(queue)
 
-            if (x, y) in victims:
+            #Se estamos no objetivo, o caminho e reconstruido e retornado
+            if current == goal:
                 path = []
-                while (x, y) != source:
-                    path.append((x, y))
-                    x, y = parents[x][y]
-                path.append((x, y))
-                path.reverse()
-                return path
+                while current:
+                    if current in parent and parent[current]:
+                        dx = current[0] - parent[current][0]
+                        dy = current[1] - parent[current][1]
+                        path.append((dx, dy))
+                        current = parent[current]
+                    else:
+                        break
+                return path[::-1] #Inverte a lista para que o caminho seja retornado do inicio para o objetivo
+            
+            #Marca a posicao atual como explorada
+            explored.add(current)
 
-            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                nx, ny = x + dx, y + dy
+            #Explora os vizinhos da posicao atual
+            for neighbor in self.neighbors(current):
+                #Calcula a distancia de movimento
+                cost = self.distance(current, neighbor)
 
-                if 0 <= nx < rows and 0 <= ny < cols and not visited[nx][ny] and matrix[nx][ny] != 0:
-                    visited[nx][ny] = True
-                    parents[nx][ny] = (x, y)
-                    queue.append((nx, ny))
+                #Calcula o total estimado para alcancar o objetivo atraves do vizinho atual
+                estimated_cost = cost + self.heuristic(neighbor, goal)
 
-        return None"""
+                #Verifica se o vizinho nao foi explorado e nao esta na fila
+                if neighbor not in explored and neighbor not in (node[1] for node in queue):
+                    heapq.heappush(queue, (estimated_cost, neighbor))
+                    parent[neighbor] = current
+
+                #Se um caminho melhor foi encontrado, atualizar a prioridade e o pai
+                elif any(neighbor == node[1] for node in queue) and estimated_cost < next(node for node in queue if node[1] == neighbor)[0]:
+                    index = next(i for i, node in enumerate(queue) if node[1] == neighbor)
+                    queue[index] = (estimated_cost, neighbor)
+                    heapq.heapify(queue)
+                    parent[neighbor] = current
+        
+        #Se chega aqui, entao nao existe caminho
+        return None
         
     def deliberate(self) -> bool:
         """ This is the choice of the next action. The simulator calls this
@@ -269,7 +224,7 @@ class Rescuer(AbstractAgent):
 
         # No more actions to do
         if self.plan == []:  # empty list, no more actions to do
-           return False
+            return False
 
         # Takes the first action of the plan (walk action) and removes it from the plan
         dx, dy = self.plan.pop(0)
@@ -277,17 +232,15 @@ class Rescuer(AbstractAgent):
         # Walk - just one step per deliberation
         result = self.body.walk(dx, dy)
 
-        print(self.dictCluster)
-        print(self.posCluster)
+        self.x += dx
+        self.y += dy
 
         # Rescue the victim at the current position
         if result == PhysAgent.EXECUTED:
             # check if there is a victim at the current position
             seq = self.body.check_for_victim()
             if seq >= 0:
-                res = self.body.first_aid(seq) # True when rescued           
-                if res == True:
-                   self.salvaCluster()
+                res = self.body.first_aid(seq) # True when rescued   
 
         return True
 

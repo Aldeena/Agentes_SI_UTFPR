@@ -6,6 +6,7 @@ import sys
 import os
 import random
 import time
+import heapq
 from abstract_agent import AbstractAgent
 from physical_agent import PhysAgent
 from abc import ABC, abstractmethod
@@ -16,13 +17,11 @@ class Explorer(AbstractAgent):
     result = {}
     untried = {}
     unbacktracked = {}
-    movimento = []
-    walls = {}
+    plan = []
     victims = {}
     action = None
-    directions = {'U':(0,-1), 'UR':(1,-1), 'R':(1,0), 'DR':(1,1), 'D':(0,1), 'DL':(-1, 1), 'L':(-1,0), 'UL':(-1, -1)}
-    #actions = ['U', 'UR', 'R', 'DR', 'D', 'DL', 'L', 'UL'] #Clockwork movement pattern
-    actions = ['U', 'R', 'D', 'L', 'UR', 'DR', 'UL', 'DL'] #New movement pattern, more efficient
+    directions = {'U':(0,-1), 'UR':(1,-1), 'R':(1,0), 'DR':(1,1), 'D':(0,1), 'DL':(-1, 1), 'L':(-1,0), 'UL':(-1, -1), 'END': (0,0)}
+    actions = ['U', 'UR', 'R', 'DR', 'D', 'DL', 'L', 'UL', 'END'] #Clockwork movement pattern
 
     """
         +x = direita
@@ -47,233 +46,105 @@ class Explorer(AbstractAgent):
         self.y = 0
         self.last_x = 0
         self.last_y = 0
-        self.manhattanDist = 0
+        self.plan_made= 0
         self.retornando = 0
         self.terminou = 0
-        #self.passos = 0
 
-    def voltaBase(self): #Function responsible to make the agent return to base prioritizing the minimum cost possible. Brute force decisions
-        """
-            A ideia eh que o agente consiga voltar a base priorizando o menor custo, o que em um caso médio, seria priorizando a diagonal
-            ao invés de um movimento em um eixo seguido de um movimento em outro eixo. Contudo, mesmo que movimentos no sentido oposto 
-            ao objetivonao sejam bem vistos para a solução final, eles podem devem ser considerados caso o robo nao estejan encaixotado 
-            em um canto do grid cercado por paredes
-        """
+    def neighbors(self, position):
+        x, y = position
+        neighbors = [(x-1, y), (x+1, y), (x, y-1), (x, y+1), (x-1, y-1), (x+1, y+1), (x-1, y+1), (x+1, y-1)]
+        valid_neighbors = []
+        for neighbor in neighbors:
+            if neighbor in self.result and self.result[neighbor] == PhysAgent.EXECUTED:
+                valid_neighbors.append(neighbor)
+
+        return valid_neighbors
+    
+    def distance(self, position, neighbor):
+        x1, y1 = position
+        x2, y2 = neighbor
+        dx, dy = abs(x1 - x2), abs(y1 - y2)
+        if dx == dy:
+            return 1.5
+        else:
+            return 1
+
+    def heuristic(self, position, goal):
+        return abs(position[0] - goal[0]) + abs(position[1] - goal[1])
+    
+    def A_Star(self, start, goal, neighbors, distance, heuristic):
+        #Inicializa o set de explorados, a fila de prioridade e o dicionario contendo o pai de cada posicao
+        explored = set()
+        queue = [(self.heuristic(start, goal), start)]
+        parent = {start: None}
+
+        while queue:
+            #Recebe a posicao com o menor custo estimado
+            _, current = heapq.heappop(queue)
+
+            #Se estamos no objetivo, o caminho e reconstruido e retornado
+            if current == goal:
+                path = []
+                while current:
+                    if current in parent and parent[current]:
+                        dx = current[0] - parent[current][0]
+                        dy = current[1] - parent[current][1]
+                        path.append((dx, dy))
+                        current = parent[current]
+                    else:
+                        break
+                return path[::-1] #Inverte a lista para que o caminho seja retornado do inicio para o objetivo
+            
+            #Marca a posicao atual como explorada
+            explored.add(current)
+
+            #Explora os vizinhos da posicao atual
+            for neighbor in self.neighbors(current):
+                #Calcula a distancia de movimento
+                cost = self.distance(current, neighbor)
+
+                #Calcula o total estimado para alcancar o objetivo atraves do vizinho atual
+                estimated_cost = cost + self.heuristic(neighbor, goal)
+
+                #Verifica se o vizinho nao foi explorado e nao esta na fila
+                if neighbor not in explored and neighbor not in (node[1] for node in queue):
+                    heapq.heappush(queue, (estimated_cost, neighbor))
+                    parent[neighbor] = current
+
+                #Se um caminho melhor foi encontrado, atualizar a prioridade e o pai
+                elif any(neighbor == node[1] for node in queue) and estimated_cost < next(node for node in queue if node[1] == neighbor)[0]:
+                    index = next(i for i, node in enumerate(queue) if node[1] == neighbor)
+                    queue[index] = (estimated_cost, neighbor)
+                    heapq.heapify(queue)
+                    parent[neighbor] = current
         
-               
+        #Se chega aqui, entao nao existe caminho
+        return None
+        
+        
+    def voltaBase(self, position, goal):
 
-        if self.x < 0: #Left
-            if self.y < 0: #Up
-                movimentos = ['DR', 'R', 'D', 'DR', 'UR', 'DL', 'L', 'UL']
+        if self.plan_made == 0:
 
-                for i in movimentos:
-                    print("Direção: ", i)
-                    dx = self.directions[i][0]
-                    dy = self.directions[i][1]
-                    print("dx: ", dx, " dy: ", dy)
-                    passo = self.body.walk(self.x+dx, self.y+dy)
-                    if dx != 0 and dy != 0:
-                        self.rtime -= self.COST_DIAG
-                    else:
-                        self.rtime -= self.COST_LINE
-                    if passo == PhysAgent.EXECUTED:
-                        self.x = self.x + dx
-                        self.y = self.y + dy
-                        
-                        break
+            self.plan_made = 1
+        
+            path = self.A_Star(position, goal, self.neighbors, self.distance, self.heuristic)
 
-                else:
-                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                    return False
-            
-            elif self.y > 0: #Down
-                movimentos = ['UR', 'R', 'U', 'DR', 'UL', 'D', 'L', 'DL']
+            if path is not None:
+                for i in path:
+                    self.plan.append(i) 
+        
+        else:
 
-                for i in movimentos:
-                    print("Direção: ", i)
-                    dx = self.directions[i][0]
-                    dy = self.directions[i][1]
-                    print("dx: ", dx, " dy: ", dy)
-                    passo = self.body.walk(self.x+dx, self.y+dy)
-                    if dx != 0 and dy != 0:
-                        self.rtime -= self.COST_DIAG
-                    else:
-                        self.rtime -= self.COST_LINE
-                    if passo == PhysAgent.EXECUTED:
-                        self.x = self.x + dx
-                        self.y = self.y + dy
-                        
-                        break
-                
-                else:
-                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                    return False
-            
-            else: #y=0
-                movimentos = ['R', 'UR', 'DR', 'U', 'D', 'DL', 'UL', 'L']
-
-                for i in movimentos:
-                    print("Direção: ", i)
-                    dx = self.directions[i][0]
-                    dy = self.directions[i][1]
-                    print("dx: ", dx, " dy: ", dy)
-                    passo = self.body.walk(self.x+dx, self.y+dy)
-                    if dx != 0 and dy != 0:
-                        self.rtime -= self.COST_DIAG
-                    else:
-                        self.rtime -= self.COST_LINE
-                    if passo == PhysAgent.EXECUTED:
-                        self.x = self.x + dx
-                        self.y = self.y + dy
-                        
-                        break
-                
-                else:
-                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                    return False
-            
-        elif self.x > 0: #Right
-            if self.y < 0: #Up
-                movimentos = ['DL', 'L', 'D', 'UL', 'DR', 'U', 'R', 'UR']
-
-                for i in movimentos:
-                    print("Direção: ", i)
-                    dx = self.directions[i][0]
-                    dy = self.directions[i][1]
-                    print("dx: ", dx, " dy: ", dy)
-                    passo = self.body.walk(self.x+dx, self.y+dy)
-                    if dx != 0 and dy != 0:
-                        self.rtime -= self.COST_DIAG
-                    else:
-                        self.rtime -= self.COST_LINE
-                    if passo == PhysAgent.EXECUTED:
-                        self.x = self.x + dx
-                        self.y = self.y + dy
-                        
-                        break
-                
-                else:
-                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                    return False
-            
-            elif self.y > 0: #Down
-                movimentos = ['UL', 'L', 'U', 'DL', 'UR', 'D', 'R', 'DR']
-
-                for i in movimentos:
-                    print("Direção: ", i)
-                    dx = self.directions[i][0]
-                    dy = self.directions[i][1]
-                    print("dx: ", dx, " dy: ", dy)
-                    passo = self.body.walk(self.x+dx, self.y+dy)
-                    if dx != 0 and dy != 0:
-                        self.rtime -= self.COST_DIAG
-                    else:
-                        self.rtime -= self.COST_LINE
-                    if passo == PhysAgent.EXECUTED:
-                        self.x = self.x + dx
-                        self.y = self.y + dy
-                        
-                        break
-                
-                else:
-                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                    return False
-            
-            else: #y=0
-                movimentos = ['L', 'UL', 'DL', 'U', 'D', 'DR', 'UR', 'R']
-
-                for i in movimentos:
-                    print("Direção: ", i)
-                    dx = self.directions[i][0]
-                    dy = self.directions[i][1]
-                    print("dx: ", dx, " dy: ", dy)
-                    passo = self.body.walk(self.x+dx, self.y+dy)
-                    if dx != 0 and dy != 0:
-                        self.rtime -= self.COST_DIAG
-                    else:
-                        self.rtime -= self.COST_LINE
-                    if passo == PhysAgent.EXECUTED:
-                        self.x = self.x + dx
-                        self.y = self.y + dy
-                        
-                        break
-                
-                else:
-                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                    return False
-                
-        else: #x=0
-            if self.y < 0: #Up
-                movimentos = ['D', 'DL', 'DR', 'L', 'R', 'UL', 'UR', 'U']
-
-                for i in movimentos:
-                    print("Direção: ", i)
-                    dx = self.directions[i][0]
-                    dy = self.directions[i][1]
-                    print("dx: ", dx, " dy: ", dy)
-                    passo = self.body.walk(self.x+dx, self.y+dy)
-                    if dx != 0 and dy != 0:
-                        self.rtime -= self.COST_DIAG
-                    else:
-                        self.rtime -= self.COST_LINE
-                    if passo == PhysAgent.EXECUTED:
-                        self.x = self.x + dx
-                        self.y = self.y + dy
-                        
-                        break
-                
-                else:
-                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                    return False
-            
-            elif self.y > 0: #Down
-                movimentos = ['U', 'UL', 'UR', 'L', 'R', 'DL', 'DR', 'D']
-
-                for i in movimentos:
-                    print("Direção: ", i)
-                    dx = self.directions[i][0]
-                    dy = self.directions[i][1]
-                    print("dx: ", dx, " dy: ", dy)
-                    passo = self.body.walk(self.x+dx, self.y+dy)
-                    if dx != 0 and dy != 0:
-                        self.rtime -= self.COST_DIAG
-                    else:
-                        self.rtime -= self.COST_LINE
-                    if passo == PhysAgent.EXECUTED:
-                        self.x = self.x + dx
-                        self.y = self.y + dy
-                        
-                        break
-                
-                else:
-                    print("Agent is in a dead end and can't move anymore! Agent will be killed!")
-                    return False
-            
-            else: #y=0
-                print("Agent already base! Time to summon the rescuer")
+            if self.plan == []:  # empty list, no more actions to do
                 return False
+            
+            # Takes the first action of the plan (walk action) and removes it from the plan
+            dx, dy = self.plan.pop(0)
 
-        
-        return True
+            # Walk - just one step per deliberation
+            self.body.walk(dx, dy)
 
-        dx = random.choice([-1, 0, 1])
-
-        if dx == 0:
-           dy = random.choice([-1, 1])
-        else:
-           dy = random.choice([-1, 0, 1])
-        
-        # Moves the body to another position
-        result = self.body.walk(dx, dy)
-
-        # Update remaining time
-        if dx != 0 and dy != 0:
-            self.rtime -= self.COST_DIAG
-        else:
-            self.rtime -= self.COST_LINE
-
-        
-        
 
 
     def dfs_Online(self):
@@ -293,7 +164,7 @@ class Explorer(AbstractAgent):
         if (self.x, self.y) not in self.untried:
             self.untried[(self.x, self.y)] = self.actions.copy()
 
-        if self.action is not None:
+        if self.action is not None and self.action != 'END':
             movement = self.directions[self.action]
             dx = movement[0]
             dy = movement[1]
@@ -301,53 +172,31 @@ class Explorer(AbstractAgent):
             if (self.x+dx, self.y+dy) not in self.result:
                 # Priority based direction
                 movimento = self.body.walk(dx,dy)
-                if dx != 0 and dy != 0:
-                    self.rtime -= self.COST_DIAG
-                else:
-                    self.rtime -= self.COST_LINE
-                #self.passos += 1
                 self.result[(self.x+dx,self.y+dy)] = movimento
-                self.unbacktracked[(self.x,self.y)] = (self.last_x,self.last_y)
 
         if self.untried[(self.x,self.y)] == []:
             if self.unbacktracked == {}:
-                self.resc.go_save_victims(self.walls, self.victims)
                 self.terminou = 1
+                last_dx = self.last_x - self.x
+                last_dy = self.last_y - self.y
+                self.body.walk(last_dx,last_dy)
                 return
             
             else:
                 voltou = 1
-                #print("last_x: ", self.last_x, " last_y: ", self.last_y)
                 last_dx = self.last_x - self.x
                 last_dy = self.last_y - self.y
                 self.body.walk(last_dx,last_dy)
-
-                if dx != 0 and dy != 0:
-                    self.rtime -= self.COST_DIAG
-                else:
-                    self.rtime -= self.COST_LINE
-
-                #self.passos += 1
                 self.x = self.last_x
                 self.y = self.last_y
-                self.manhattanDist = abs(self.last_x) + abs(self.last_y)
 
-                if self.manhattanDist >= self.rtime:
+                if self.heuristic((self.x,self.y), (0,0)) >= self.rtime - 10:
                     self.retornando = 1
 
-                print("Manhattan Dist: ", self.manhattanDist)
-                print("Tempo: ", self.rtime)
-                print("Retornando: ", self.retornando)
-                #time.sleep(0.1)
-                #if (self.x == 0 and self.y == 0) and ((0,0) not in self.unbacktracked):
-                    #self.resc.go_save_victims([], [])
-                    #self.terminou = 1
-                    #return
                 lastMov = self.unbacktracked.popitem()
                 self.last_x = lastMov[1][0]
                 self.last_y = lastMov[1][1]
-                #self.x = self.x + dx
-                #self.y = self.y + dy
+
 
         else:
             if len(self.untried[(self.x, self.y)]) > 0 and movimento != PhysAgent.EXECUTED:
@@ -360,26 +209,19 @@ class Explorer(AbstractAgent):
             self.last_y = self.y
             self.x = self.x + dx
             self.y = self.y + dy
-            self.manhattanDist = abs(self.last_x) + abs(self.last_y)
+            self.unbacktracked[(self.x,self.y)] = (self.last_x,self.last_y)
 
-            if self.manhattanDist >= self.rtime:
+            if self.heuristic((self.x,self.y), (0,0)) >= self.rtime - 10:
                     self.retornando = 1
 
-            print("Manhattan Dist: ", self.manhattanDist)
-            print("Tempo: ", self.rtime)
-            print("Retornando: ", self.retornando)
             seq = self.body.check_for_victim()
 
             if seq >= 0:
                 vs = self.body.read_vital_signals(seq)
-                self.rtime -= self.COST_READ
+                #self.rtime -= self.COST_READ
                 self.victims[(self.x,self.y)] = vs
-                print("exp: read vital signals of " + str(seq))
-                print(vs)
-            #time.sleep(0.1)
-
-        elif movimento == PhysAgent.BUMPED:
-            self.walls[(self.x+dx,self.y+dy)] = 1
+                # print("exp: read vital signals of " + str(seq))
+                # print(vs)
 
         return
     
@@ -392,22 +234,24 @@ class Explorer(AbstractAgent):
             # time to wake up the rescuer
             # pass the walls and the victims (here, they're empty)
             print(f"{self.NAME} I believe I've remaining time of {self.rtime:.1f}")
-            self.resc.go_save_victims([],[])
+            self.resc.go_save_victims(self.result,self.victims)
             return False
         
-        #if self.retornando == 1:    #Returned to base through function
-        #    if self.voltaBase() != False:
-        #        pass
-                #time.sleep(0.2)
-        #    else:
-        #        return False
-        #else:                       #Walked through the whole grid and returned to base through backtracking
-        if self.terminou == 0: 
-            self.dfs_Online()
-            #time.sleep(0.2)
-        else:
-           return False
+        if self.retornando == 1:    #Returned to base through function
+            # Takes the first action of the plan (walk action) and removes it from the plan
+            self.voltaBase((self.x,self.y), (0,0))
+
+            if self.plan == []:
+                self.resc.go_save_victims(self.result,self.victims)
+                return False
         
+        else:                       #Walked through the whole grid and returned to base through backtracking
+            if self.terminou == 0: 
+                self.dfs_Online()
+
+            else:
+                self.resc.go_save_victims(self.result,self.victims)
+                return False
         
         ##Professor's code##
         

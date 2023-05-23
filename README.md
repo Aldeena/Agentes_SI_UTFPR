@@ -1,4 +1,4 @@
-_Description from Professor Tacla's github:
+#### _Description from Professor Tacla's github:_
 
 # VictimSim
 A simulator for testing search algorithms in rescue scenarios.
@@ -16,7 +16,8 @@ The Explorer walks randomly in the environment while the Rescuer has a stored pl
 When the explorer finishes the task of locating and reading the vital signals of victims, it calls the Rescuer agent to start
 the rescue task.
 
-_Authors' comments
+
+#### _Authors' comments_:
 
 # What was done?
 
